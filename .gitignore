@@ -40,5 +40,8 @@ Thumbs.db
 # Screenshots
 hand_detection_screenshot_*.png
 
+# MediaPipe Models
+*.task
+
 # Jupyter Notebook
 .ipynb_checkpoints

@@ -6,6 +6,30 @@ This script captures video from webcam and detects hand landmarks in real-time.
 import cv2
 import mediapipe as mp
 import time
+import numpy as np
+import urllib.request
+import os
+
+
+def download_hand_landmarker_model():
+    """Download the hand landmarker model if it doesn't exist."""
+    model_path = 'hand_landmarker.task'
+    if not os.path.exists(model_path):
+        print("=" * 70)
+        print("Hand Landmarker Model Required")
+        print("=" * 70)
+        print("\nThe hand_landmarker.task model file is required to run this application.")
+        print("\nPlease download it manually:")
+        print("1. Visit: https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task")
+        print("2. Save the file as 'hand_landmarker.task' in the current directory")
+        print(f"   Current directory: {os.getcwd()}")
+        print("\nAlternatively, you can use wget or curl:")
+        print("   wget https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task")
+        print("   or")
+        print("   curl -L -o hand_landmarker.task https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task")
+        print("\n" + "=" * 70)
+        raise FileNotFoundError(f"Model file not found: {model_path}")
+    return model_path
 
 
 class HandLandmarksDetector:
@@ -25,15 +49,21 @@ class HandLandmarksDetector:
             min_detection_confidence: Minimum confidence value for hand detection
             min_tracking_confidence: Minimum confidence value for hand tracking
         """
-        self.mp_hands = mp.solutions.hands
-        self.mp_drawing = mp.solutions.drawing_utils
-        self.mp_drawing_styles = mp.solutions.drawing_styles
+        # Download model if needed
+        model_path = download_hand_landmarker_model()
         
-        self.hands = self.mp_hands.Hands(
-            max_num_hands=max_num_hands,
-            min_detection_confidence=min_detection_confidence,
-            min_tracking_confidence=min_tracking_confidence
+        # Use the new MediaPipe API
+        base_options = mp.tasks.BaseOptions(model_asset_path=model_path)
+        options = mp.tasks.vision.HandLandmarkerOptions(
+            base_options=base_options,
+            num_hands=max_num_hands,
+            min_hand_detection_confidence=min_detection_confidence,
+            min_tracking_confidence=min_tracking_confidence,
+            running_mode=mp.tasks.vision.RunningMode.VIDEO
         )
+        self.detector = mp.tasks.vision.HandLandmarker.create_from_options(options)
+        self.frame_counter = 0
+        self.HAND_CONNECTIONS = mp.tasks.vision.HandLandmarksConnections.HAND_CONNECTIONS
         
     def detect_landmarks(self, image):
         """
@@ -49,8 +79,13 @@ class HandLandmarksDetector:
         # Convert BGR to RGB
         image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         
-        # Process the image
-        results = self.hands.process(image_rgb)
+        # Create MediaPipe Image object
+        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=image_rgb)
+        
+        # Process the image with timestamp (in milliseconds)
+        self.frame_counter += 1
+        timestamp_ms = int(self.frame_counter * 33)  # Assuming ~30 FPS
+        results = self.detector.detect_for_video(mp_image, timestamp_ms)
         
         return results, image_rgb
     
@@ -65,16 +100,31 @@ class HandLandmarksDetector:
         Returns:
             image: Image with landmarks drawn
         """
-        if results.multi_hand_landmarks:
-            for hand_landmarks in results.multi_hand_landmarks:
-                # Draw hand landmarks
-                self.mp_drawing.draw_landmarks(
-                    image,
-                    hand_landmarks,
-                    self.mp_hands.HAND_CONNECTIONS,
-                    self.mp_drawing_styles.get_default_hand_landmarks_style(),
-                    self.mp_drawing_styles.get_default_hand_connections_style()
-                )
+        if results.hand_landmarks:
+            for hand_landmarks in results.hand_landmarks:
+                # Convert normalized landmarks to pixel coordinates
+                h, w, _ = image.shape
+                
+                # Draw landmarks
+                for idx, landmark in enumerate(hand_landmarks):
+                    x = int(landmark.x * w)
+                    y = int(landmark.y * h)
+                    cv2.circle(image, (x, y), 5, (0, 255, 0), -1)
+                    
+                # Draw connections
+                for connection in self.HAND_CONNECTIONS:
+                    start_idx = connection[0]
+                    end_idx = connection[1]
+                    
+                    start_landmark = hand_landmarks[start_idx]
+                    end_landmark = hand_landmarks[end_idx]
+                    
+                    start_x = int(start_landmark.x * w)
+                    start_y = int(start_landmark.y * h)
+                    end_x = int(end_landmark.x * w)
+                    end_y = int(end_landmark.y * h)
+                    
+                    cv2.line(image, (start_x, start_y), (end_x, end_y), (255, 0, 0), 2)
         
         return image
     
@@ -92,21 +142,22 @@ class HandLandmarksDetector:
         """
         hands_info = []
         
-        if results.multi_hand_landmarks:
-            for idx, hand_landmarks in enumerate(results.multi_hand_landmarks):
+        if results.hand_landmarks:
+            for idx, hand_landmarks in enumerate(results.hand_landmarks):
                 hand_info = {
                     'hand_index': idx,
                     'landmarks': []
                 }
                 
                 # Get handedness (left or right hand)
-                if results.multi_handedness:
-                    handedness = results.multi_handedness[idx]
-                    hand_info['label'] = handedness.classification[0].label
-                    hand_info['score'] = handedness.classification[0].score
+                if results.handedness and idx < len(results.handedness):
+                    handedness = results.handedness[idx]
+                    if handedness:
+                        hand_info['label'] = handedness[0].category_name
+                        hand_info['score'] = handedness[0].score
                 
                 # Get landmark coordinates
-                for landmark_id, landmark in enumerate(hand_landmarks.landmark):
+                for landmark_id, landmark in enumerate(hand_landmarks):
                     hand_info['landmarks'].append({
                         'id': landmark_id,
                         'x': landmark.x,
@@ -122,7 +173,7 @@ class HandLandmarksDetector:
     
     def close(self):
         """Close the hand detector."""
-        self.hands.close()
+        self.detector.close()
 
 
 def main():

@@ -42,6 +42,26 @@ A real-time hand landmarks detection system using MediaPipe and OpenCV. This pro
    pip install -r requirements.txt
    ```
 
+4. **Download the MediaPipe hand landmarker model**
+   
+   The application requires a pre-trained model file. Download it using one of these methods:
+   
+   **Option A: Using wget (Linux/macOS)**
+   ```bash
+   wget https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task
+   ```
+   
+   **Option B: Using curl (Linux/macOS/Windows)**
+   ```bash
+   curl -L -o hand_landmarker.task https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task
+   ```
+   
+   **Option C: Manual download**
+   - Visit: [Download Model](https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task)
+   - Save the file as `hand_landmarker.task` in the project directory
+   
+   The model file should be approximately 26-27 MB in size.
+
 ## 💻 Usage
 
 ### Basic Usage
@@ -118,6 +138,13 @@ Hand-landmarks-detection/
 ```
 
 ## 🔧 Troubleshooting
+
+### Model File Not Found
+- **Issue**: "Model file not found: hand_landmarker.task"
+- **Solution**:
+  - Make sure you've downloaded the model file as described in the installation steps
+  - Ensure the model file is in the same directory as the script
+  - Verify the file size is approximately 26-27 MB (if it's much smaller, the download may have failed)
 
 ### Camera Not Opening
 - **Issue**: "Error: Could not open webcam"
