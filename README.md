@@ -64,13 +64,27 @@ A real-time hand landmarks detection system using MediaPipe and OpenCV. This pro
 
 ## 💻 Usage
 
-### Basic Usage
+### Quick Start
 
-Run the main script to start hand landmarks detection:
+1. **Download the model (if you haven't already)**
+   ```bash
+   python download_model.py
+   ```
+
+2. **Run the main application**
+   ```bash
+   python hand_landmarks_detector.py
+   ```
+
+### Example Usage
+
+To see example code and learn how to use the detector in your own projects:
 
 ```bash
-python hand_landmarks_detector.py
+python example.py
 ```
+
+This will show you basic usage patterns without requiring a camera.
 
 ### Controls
 
@@ -115,6 +129,44 @@ MediaPipe detects 21 landmarks on each hand:
 20: Pinky Tip
 ```
 
+## 🔌 Using in Your Own Code
+
+You can use the `HandLandmarksDetector` class in your own Python projects:
+
+```python
+from hand_landmarks_detector import HandLandmarksDetector
+import cv2
+
+# Initialize detector
+detector = HandLandmarksDetector(
+    max_num_hands=2,
+    min_detection_confidence=0.7,
+    min_tracking_confidence=0.7
+)
+
+# Capture image from camera or load from file
+image = cv2.imread('your_image.jpg')
+
+# Detect hands
+results, image_rgb = detector.detect_landmarks(image)
+
+# Draw landmarks
+image_with_landmarks = detector.draw_landmarks(image, results)
+
+# Get detailed hand information
+hands_info = detector.get_hand_info(results, image.shape[1], image.shape[0])
+
+# Access hand data
+for hand_info in hands_info:
+    print(f"Hand: {hand_info['label']}")  # 'Left' or 'Right'
+    print(f"Confidence: {hand_info['score']}")
+    for landmark in hand_info['landmarks']:
+        print(f"Landmark {landmark['id']}: ({landmark['x']}, {landmark['y']})")
+
+# Clean up
+detector.close()
+```
+
 ## 🛠️ Customization
 
 You can customize the detector by modifying parameters in the `HandLandmarksDetector` class:
@@ -132,6 +184,8 @@ detector = HandLandmarksDetector(
 ```
 Hand-landmarks-detection/
 ├── hand_landmarks_detector.py    # Main application script
+├── download_model.py              # Helper script to download the model
+├── example.py                     # Example usage script
 ├── requirements.txt               # Python dependencies
 ├── README.md                      # This file
 └── .gitignore                     # Git ignore file
