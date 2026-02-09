@@ -84,7 +84,9 @@ class HandLandmarksDetector:
         
         # Process the image with timestamp (in milliseconds)
         self.frame_counter += 1
-        timestamp_ms = int(self.frame_counter * 33)  # Assuming ~30 FPS
+        # Use a more accurate timestamp based on expected frame rate
+        # Assuming ~30 FPS as a baseline, but this is just for MediaPipe's internal tracking
+        timestamp_ms = int(self.frame_counter * 1000 / 30)
         results = self.detector.detect_for_video(mp_image, timestamp_ms)
         
         return results, image_rgb
@@ -245,7 +247,8 @@ def main():
             
             # Calculate and display FPS
             current_time = time.time()
-            fps = 1 / (current_time - prev_time) if prev_time > 0 else 0
+            time_diff = current_time - prev_time
+            fps = 1 / time_diff if time_diff > 0 else 0
             prev_time = current_time
             cv2.putText(frame, f"FPS: {int(fps)}", (w - 150, 30),
                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
